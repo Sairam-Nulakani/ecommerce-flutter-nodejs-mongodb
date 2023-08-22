@@ -24,15 +24,22 @@ module.exports = {
   loginUser: async (req, res) => {
     try {
       const user = await User.findOne({ email: req.body.email });
-      !user &&
-        res.status(401).json("Could not find the user with given credentials");
+      if (!user) {
+        return res
+          .status(401)
+          .json("Could not find the user with given credentials");
+      }
+
       const decryptedpass = CryptoJS.AES.decrypt(
         user.password,
         process.env.SECRET
       );
       const thepassword = decryptedpass.toString(CryptoJS.enc.Utf8);
-      thepassword !== req.body.password &&
-        res.status(401).json("Wrong Password");
+
+      if (thepassword !== req.body.password) {
+        return res.status(401).json("Wrong Password");
+      }
+
       const userToken = jwt.sign(
         {
           id: user._id,
@@ -40,10 +47,11 @@ module.exports = {
         process.env.JWT_SECRET,
         { expiresIn: "2d" }
       );
-      const { password, __v, createdAt, ...others } = user._doc;
-      res.statu(200).json({ ...others, token: userToken });
+
+      const { password, __v, updatedAt, createdAt, ...others } = user._doc;
+      return res.status(200).json({ ...others, token: userToken });
     } catch (err) {
-      res.status(500).json("Failed to Login check your crendentials");
+      return res.status(500).json("Failed to Login check your credentials");
     }
   },
 };
